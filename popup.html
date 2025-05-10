@@ -1,86 +1,535 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>FB Ad Filler</title>
   <style>
+    :root {
+      --primary-blue: #2563eb;
+      --primary-blue-dark: #1d4ed8;
+      --primary-green: #10b981;
+      --primary-green-dark: #059669;
+      --light-gray-bg: #f3f4f6;
+      --white: #ffffff;
+      --text-dark: #1f2937;
+      --text-light: #6b7280;
+      --border-color: #d1d5db;
+      --notice-bg: #fffbeb;
+      --notice-text: #92400e;
+      --notice-border: #fde68a;
+      --icon-gray: #6b7280;
+      --danger-red: #ef4444;
+      --danger-red-dark: #dc2626;
+      --copy-icon-color: #4b5563;
+    }
     body {
-      font-family: sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: #f9f9f9;
+      background: var(--light-gray-bg);
       width: 600px;
+      color: var(--text-dark);
+      font-size: 14px;
+      min-height: 500px; 
     }
     .header {
-      background: #2563eb;
-      color: white;
-      padding: 10px;
+      background: var(--primary-blue);
+      color: var(--white);
+      padding: 12px 15px;
       font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-title {
+      flex-grow: 1;
+    }
+    .header-icons {
+      display: flex;
+      align-items: center;
+    }
+    .settings-icon, .back-icon, .info-icon {
+      cursor: pointer;
+      font-size: 20px;
+      padding: 5px;
+      margin-left: 8px;
+    }
+    .back-icon {
+      margin-left: 0;
     }
     .notice {
-      background: #fff3cd;
-      color: #856404;
-      padding: 10px;
-      font-size: 14px;
+      background: var(--notice-bg);
+      color: var(--notice-text);
+      border-bottom: 1px solid var(--notice-border);
+      padding: 10px 15px;
+      font-size: 13px;
+      line-height: 1.4;
     }
-    .container {
+    .content-wrapper {
+      padding: 15px;
+    }
+    .main-content-grid {
       display: flex;
-      padding: 10px;
-      gap: 10px;
+      gap: 15px;
     }
     .input-section, .preview-section {
       flex: 1;
+      background: var(--white);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
       display: flex;
       flex-direction: column;
     }
-    textarea {
-      flex: 1;
-      padding: 8px;
-      resize: none;
-      font-size: 14px;
+    .preview-section {
+        justify-content: space-between;
     }
-    .preview-box {
-      flex: 1;
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+    .section-title svg {
+      margin-right: 8px;
+      width: 18px;
+      height: 18px;
+      color: var(--icon-gray);
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text-dark);
+    }
+    .form-group select, #optionsView select, #archiveView select {
+      width: 100%;
       padding: 8px;
-      background: white;
-      border: 1px solid #ccc;
-      margin-bottom: 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      background-color: var(--white);
+      color: var(--text-dark);
+      box-sizing: border-box;
+    }
+    textarea#inputContent {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 120px; 
+      flex-grow: 1;
+      padding: 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      resize: vertical;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .button-group {
+      display: flex;
+      gap: 8px; 
+      margin-top: 10px;
+      flex-wrap: wrap; 
     }
     button {
-      background: #2563eb;
-      color: white;
       border: none;
-      padding: 10px;
-      margin-top: 5px;
+      padding: 10px 12px; 
+      border-radius: 6px;
       cursor: pointer;
+      font-size: 13px; 
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      flex-grow: 1;
     }
-    button:hover {
-      background: #1d4ed8;
+    button svg {
+      margin-right: 6px; 
+      width: 16px;
+      height: 16px;
     }
-    input {
-      padding: 6px;
-      margin-top: 5px;
+    .btn-primary {
+      background: var(--primary-blue);
+      color: var(--white);
+    }
+    .btn-primary:hover {
+      background: var(--primary-blue-dark);
+    }
+    .btn-secondary {
+      background: var(--light-gray-bg);
+      color: var(--text-dark);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+    .btn-success { /* No longer used for autofill, can be repurposed or removed if not needed */
+      background: var(--primary-green);
+      color: var(--white);
+    }
+    .btn-success:hover { /* No longer used for autofill */
+      background: var(--primary-green-dark);
+    }
+    .btn-danger {
+      background-color: var(--danger-red);
+      color: var(--white);
+    }
+    .btn-danger:hover {
+      background-color: var(--danger-red-dark);
+    }
+    .preview-content {
+        flex-grow: 1;
+    }
+    .preview-box {
+      padding: 10px;
+      background: var(--light-gray-bg);
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      position: relative; /* For positioning copy button */
+    }
+    .preview-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .preview-box-header strong {
+      font-weight: 500;
+      color: var(--text-dark);
+    }
+    .copy-btn {
+      background: none;
+      border: none;
+      padding: 4px;
+      cursor: pointer;
+      color: var(--copy-icon-color);
+      flex-grow: 0; /* Don't let copy button grow */
+      min-width: auto; /* Override default button styles */
+    }
+    .copy-btn svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+      margin-right: 0; /* No margin for icon-only button */
+    }
+    .copy-btn:hover {
+      color: var(--primary-blue);
+    }
+    .preview-box div[contenteditable="true"], .preview-box div { /* Make text selectable for manual copy if needed */
+      color: var(--text-light);
+      min-height: 1.2em;
+      word-wrap: break-word;
+      white-space: pre-wrap; /* To respect paragraphs and line breaks from AI */
+    }
+    #variantsContainer {
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+      background: #f2f2f2;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      max-height: 150px; /* Adjusted height */
+      overflow-y: auto;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+    #variantsContainer h4 {
+      margin-top: 0;
+      margin-bottom: 5px;
+      font-size: 0.95rem;
+      color: var(--text-dark);
+    }
+
+
+    #optionsView .content-wrapper, #infoView .content-wrapper, #archiveView .content-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .form-container {
+      background: var(--white);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+      width: 100%;
+      max-width: 550px;
+    }
+    #optionsView label, #infoView h3, #archiveView h3 {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    #optionsView input[type="password"], #optionsView select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
       font-size: 14px;
+      margin-bottom: 15px;
+    }
+    #optionsView button {
+      width: auto; 
+      flex-grow: 0; 
+      margin-top: 5px; 
+    }
+    #infoView p, #infoView ul {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-dark);
+      margin-bottom: 12px;
+    }
+    #infoView ul {
+      padding-left: 20px;
+    }
+    #infoView strong {
+      font-weight: 600;
+    }
+    #systemPromptDisplay {
+      white-space: pre-wrap;
+      background-color: #f9fafb;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-size: 12px;
+      line-height: 1.5;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 10px;
+      color: #374151;
+    }
+    #archiveListContainer {
+      width: 100%;
+      max-height: 400px; 
+      overflow-y: auto;
+    }
+    .archive-item {
+      background: var(--light-gray-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column; 
+      gap: 8px;
+    }
+    .archive-item-details {
+      font-size: 13px;
+    }
+    .archive-item-details strong {
+      font-weight: 500;
+      color: var(--text-dark);
+    }
+    .archive-item-details .archive-data {
+      color: var(--text-light);
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%; 
+      margin-top: 2px;
+    }
+    .archive-item-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px; 
+    }
+    .archive-item-actions button {
+      flex-grow: 1; 
+      padding: 8px 10px;
+      font-size: 13px;
     }
   </style>
 </head>
 <body>
-  <div class="header">FB Ad Filler</div>
-  <div class="notice">This extension works best when you're on a Facebook Ad creation page. Open Facebook Ads Manager to use all features.</div>
-  <div class="container">
-    <div class="input-section">
-      <textarea id="inputContent" placeholder="Paste your landing page content, offer, or job description here..."></textarea>
-      <button id="generateBtn">Fill Ad Fields</button>
+
+  <div id="mainView">
+    <div class="header">
+      <span class="header-title">FB Ad Filler</span>
+      <div class="header-icons">
+        <span class="info-icon" id="infoBtnMain">ℹ️</span>
+        <span class="settings-icon" id="configureBtnMain">⚙️</span>
+      </div>
     </div>
-    <div class="preview-section">
-      <div class="preview-box"><strong>Primary Text</strong><br><div id="primaryText">Will be filled...</div></div>
-      <div class="preview-box"><strong>Headline</strong><br><div id="headline">Will be filled...</div></div>
-      <div class="preview-box"><strong>Description</strong><br><div id="description">Will be filled...</div></div>
-      <div class="preview-box"><strong>Display Link</strong><br><div id="displayLink">Will be filled...</div></div>
-      <button id="autofillBtn">Fill Facebook Fields</button>
+    <div class="notice">This extension helps generate ad copy. Copy the generated text and paste it into Facebook Ads Manager.</div>
+    <div class="content-wrapper">
+      <div class="main-content-grid">
+        <div class="input-section">
+          <h2 class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Input Content
+          </h2>
+          <div class="form-group">
+            <label for="copywriterSelect">Copywriter Style:</label>
+            <select id="copywriterSelect">
+              <option value="David Ogilvy">David Ogilvy</option>
+              <option value="Andreas Baulig">Andreas Baulig</option>
+              <option value="Holger Jung">Holger Jung</option>
+              <option value="Eugene Schwartz">Eugene Schwartz</option>
+              <option value="Default" selected>Default (Expert Copywriter)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="formOfAddressSelect">Ansprache:</label>
+            <select id="formOfAddressSelect">
+              <option value="Du" selected>Du (informal)</option>
+              <option value="Sie">Sie (formal)</option>
+            </select>
+          </div>
+          <textarea id="inputContent" placeholder="Paste your landing page content, offer, or job description here..."></textarea>
+          <div class="button-group">
+            <button id="saveToArchiveBtn" class="btn-secondary">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+              Save
+            </button>
+             <button id="viewArchiveBtn" class="btn-secondary">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+              Archive
+            </button>
+            <button id="generateBtn" class="btn-primary">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+              Generate Ad Copy
+            </button>
+          </div>
+        </div>
+        <div class="preview-section">
+          <h2 class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+            Ad Preview (Version 1)
+          </h2>
+          <div class="preview-content">
+            <div class="preview-box">
+              <div class="preview-box-header">
+                <strong>Primary Text</strong>
+                <button id="copyPrimaryTextBtn" class="copy-btn" title="Copy Primary Text">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
+              </div>
+              <div id="primaryText">Will be filled...</div>
+            </div>
+            <div class="preview-box">
+              <div class="preview-box-header">
+                <strong>Headline</strong>
+                <button id="copyHeadlineBtn" class="copy-btn" title="Copy Headline">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
+              </div>
+              <div id="headline">Will be filled...</div>
+            </div>
+            <div class="preview-box">
+              <div class="preview-box-header">
+                <strong>Description</strong>
+                <button id="copyDescriptionBtn" class="copy-btn" title="Copy Description">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
+              </div>
+              <div id="description">Will be filled...</div>
+            </div>
+            <div id="variantsContainer" style="display: none;">
+                <!-- Additional versions will be shown here -->
+            </div>
+          </div>
+          <div class="button-group" style="margin-top:10px;">
+            <button id="resetBtn" class="btn-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
+              Reset
+            </button>
+            <!-- Autofill button removed -->
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <script src="popup.js"></script>
-</body>
+
+  <div id="optionsView" style="display: none;">
+    <div class="header">
+      <span class="back-icon" id="backToMainBtnFromOptions">⬅️</span>
+      <span class="header-title">Settings</span>
+      <div class="header-icons"> </div>
+    </div>
+    <div class="content-wrapper">
+      <div class="form-container">
+        <div class="form-group">
+          <label for="apiKeyInput">OpenAI API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="Enter your API key...">
+        </div>
+        <div class="form-group">
+          <label for="modelSelect">ChatGPT Model:</label>
+          <select id="modelSelect">
+            <option value="gpt-4o">GPT-4o (Latest)</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            <option value="gpt-4">GPT-4</option>
+            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+          </select>
+        </div>
+        <button id="saveSettingsBtn" class="btn-primary">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="infoView" style="display: none;">
+    <div class="header">
+      <span class="back-icon" id="backToMainBtnFromInfo">⬅️</span>
+      <span class="header-title">Plugin Information</span>
+      <div class="header-icons"></div>
+    </div>
+    <div class="content-wrapper">
+      <div class="form-container">
+        <h3>About FB Ad Filler</h3>
+        <p>This Chrome extension helps you generate compelling ad copy for Facebook Ads using AI.</p>
+        
+        <h3>How to Use:</h3>
+        <ul>
+          <li><strong>Input Content:</strong> Paste your product description, landing page text, or offer details into the "Input Content" area.</li>
+          <li><strong>Copywriter Style & Ansprache:</strong> Select a famous copywriter's style (or default) and choose the form of address (Du/Sie).</li>
+          <li><strong>Generate:</strong> Click "Generate Ad Copy" to create Primary Text, Headline, and Description. The tool will attempt to generate 3 versions. The first is shown in the main preview, others below.</li>
+          <li><strong>Review & Copy:</strong> Check the generated text in the "Ad Preview" section. Click the copy icon next to each field to copy the text of the first version to your clipboard. Then, paste it into Facebook Ads Manager. Additional versions can be manually copied from the "Additional Versions" box.</li>
+          <li><strong>Save:</strong> Click "Save" to store the current input, selections, and the first generated ad copy to the archive.</li>
+          <li><strong>Archive:</strong> Click "Archive" to view, load, or delete previously saved ad copies.</li>
+          <li><strong>Reset:</strong> Click "Reset" to clear the input and preview fields. Your text will be saved automatically otherwise.</li>
+        </ul>
+
+        <h3>Settings (⚙️ Icon):</h3>
+        <p>You <strong>must</strong> configure your OpenAI API key and can select your preferred ChatGPT model in the settings. Click the gear icon (⚙️) in the header to access settings. GPT-4o is selected by default.</p>
+        
+        <h3>Troubleshooting:</h3>
+        <ul>
+          <li><strong>No text generated:</strong> Check if your API key is correctly entered and has credits. Also, ensure your internet connection is stable and the selected model is accessible with your key.</li>
+          <li><strong>Text formatting:</strong> The AI tries to use paragraphs and bullet points where appropriate. If the formatting isn't perfect, you may need to make minor adjustments after pasting.</li>
+        </ul>
+        
+        <h3>System Prompt Used for Generation:</h3>
+        <p>The following prompt (reflecting your current selections for copywriter and address form) is used to instruct the AI:</p>
+        <pre id="systemPromptDisplay"></pre>
+        
+        <p><em>Happy Ad Creating!</em></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="archiveView" style="display: none;">
+    <div class="header">
+      <span class="back-icon" id="backToMainBtnFromArchive">⬅️</span>
+      <span class="header-title">Archive</span>
+      <div class="header-icons"></div>
+    </div>
+    <div class="content-wrapper">
+      <div class="form-container">
+        <h3>Saved Ad Copies</h3>
+        <div id="archiveListContainer">
+          <!-- Archived items will be dynamically added here -->
+        </div>
+        <p id="emptyArchiveMessage" style="display: none; text-align: center; color: var(--text-light); margin-top: 20px;">Your archive is empty. Save an ad to see it here.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script></body>
 </html>
