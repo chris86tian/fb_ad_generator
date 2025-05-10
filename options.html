@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>Settings</title></head>
+<body>
+  <h2>OpenAI API Key</h2>
+  <input type="text" id="apikey" placeholder="Enter your API key...">
+  <button id="save">Save</button>
+  <script>
+    document.getElementById('save').addEventListener('click', () => {
+      chrome.storage.local.set({ openai_key: document.getElementById('apikey').value });
+      alert('API Key saved.');
+    });
+  </script>
+</body>
+</html>

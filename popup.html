@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>FB Ad Filler</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f9f9f9;
+      width: 600px;
+    }
+    .header {
+      background: #2563eb;
+      color: white;
+      padding: 10px;
+      font-size: 18px;
+    }
+    .notice {
+      background: #fff3cd;
+      color: #856404;
+      padding: 10px;
+      font-size: 14px;
+    }
+    .container {
+      display: flex;
+      padding: 10px;
+      gap: 10px;
+    }
+    .input-section, .preview-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    textarea {
+      flex: 1;
+      padding: 8px;
+      resize: none;
+      font-size: 14px;
+    }
+    .preview-box {
+      flex: 1;
+      padding: 8px;
+      background: white;
+      border: 1px solid #ccc;
+      margin-bottom: 8px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px;
+      margin-top: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    input {
+      padding: 6px;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">FB Ad Filler</div>
+  <div class="notice">This extension works best when you're on a Facebook Ad creation page. Open Facebook Ads Manager to use all features.</div>
+  <div class="container">
+    <div class="input-section">
+      <textarea id="inputContent" placeholder="Paste your landing page content, offer, or job description here..."></textarea>
+      <button id="generateBtn">Fill Ad Fields</button>
+    </div>
+    <div class="preview-section">
+      <div class="preview-box"><strong>Primary Text</strong><br><div id="primaryText">Will be filled...</div></div>
+      <div class="preview-box"><strong>Headline</strong><br><div id="headline">Will be filled...</div></div>
+      <div class="preview-box"><strong>Description</strong><br><div id="description">Will be filled...</div></div>
+      <div class="preview-box"><strong>Display Link</strong><br><div id="displayLink">Will be filled...</div></div>
+      <button id="autofillBtn">Fill Facebook Fields</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
