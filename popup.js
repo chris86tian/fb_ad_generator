@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     descriptions: document.getElementById('descriptionsTabContent')
   };
 
+  const langDeBtn = document.getElementById('langDeBtn');
+  const langEnBtn = document.getElementById('langEnBtn');
+
   // --- Storage Keys ---
   const STORAGE_KEY_API_KEY = 'openai_key';
   const STORAGE_KEY_MODEL = 'openai_model';
@@ -55,12 +58,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const STORAGE_KEY_COPYWRITER = 'fbAdCopywriterSelect';
   const STORAGE_KEY_ADDRESS_FORM = 'fbAdAddressFormSelect';
   const STORAGE_KEY_ARCHIVES = 'fbAdArchives';
+  const STORAGE_KEY_LANGUAGE = 'fbAdLanguage';
 
-  const currentLanguage = 'de'; // Fixed language
+  let currentLanguage = 'de'; // Default language
 
   // --- Localization ---
-  async function applyLocalization() {
-    document.documentElement.lang = currentLanguage;
+  async function applyLocalization(lang) {
+    currentLanguage = lang;
+    document.documentElement.lang = lang;
+    await chrome.storage.local.set({ [STORAGE_KEY_LANGUAGE]: lang });
 
     document.querySelectorAll('[data-i18n-key]').forEach(el => {
       const key = el.dataset.i18nKey;
@@ -73,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const key = el.dataset.i18nHtmlKey;
         const message = chrome.i18n.getMessage(key);
         if (message) {
-            el.innerHTML = message; 
+            el.innerHTML = message; // Use innerHTML for keys that contain HTML
         }
     });
     document.querySelectorAll('[data-i18n-placeholder-key]').forEach(el => {
@@ -91,22 +97,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
+    // Update dynamic elements
     updateDynamicPlaceholders();
     updateCopyButtonTitles();
-    updateTabPlaceholders(true); 
+    updateTabPlaceholders(true); // Force update placeholders in tabs
+    updateLanguageButtonStates();
 
+    // Reload system prompt if info view is active
     if (infoView.style.display === 'block' && systemPromptDisplay) {
       const currentCopywriter = copywriterSelect.value || "Default";
       const currentAddressForm = formOfAddressSelect.value || "Du";
       systemPromptDisplay.innerText = getSystemPrompt(currentCopywriter, currentAddressForm);
     }
+    // Re-render archive if visible
     if (archiveView.style.display === 'block') {
         renderArchiveList();
     }
   }
 
+  function updateLanguageButtonStates() {
+    if (currentLanguage === 'de') {
+      langDeBtn.classList.add('active');
+      langEnBtn.classList.remove('active');
+    } else {
+      langEnBtn.classList.add('active');
+      langDeBtn.classList.remove('active');
+    }
+  }
+
+  langDeBtn.addEventListener('click', () => applyLocalization('de'));
+  langEnBtn.addEventListener('click', () => applyLocalization('en'));
+
   async function loadInitialLanguage() {
-    applyLocalization(); // Apply German localization directly
+    const result = await chrome.storage.local.get(STORAGE_KEY_LANGUAGE);
+    const savedLang = result[STORAGE_KEY_LANGUAGE];
+    // Fallback to browser language if no preference, then to 'de'
+    const browserLang = chrome.i18n.getUILanguage().split('-')[0];
+    applyLocalization(savedLang || browserLang || 'de');
   }
   
   function updateDynamicPlaceholders() {
@@ -130,13 +157,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const messageKey = 'tabGenerateAdCopyMessage';
     const message = chrome.i18n.getMessage(messageKey);
     Object.values(tabContents).forEach(tc => {
+        // Update only if it's the placeholder or if forceUpdate is true
         if (forceUpdate || tc.innerHTML.includes("versions here") || tc.innerHTML.includes("Versionen hier")) {
             tc.innerHTML = `<p data-i18n-key="${messageKey}">${message}</p>`;
         }
     });
   }
 
+
+  // --- System Prompt Generation ---
   function getSystemPrompt(selectedCopywriter = "Default", formOfAddress = "Du") {
+    // System prompt remains in German as it's for the AI and crafted for specific output
     const copywriterInstruction = selectedCopywriter === "Default" 
       ? "You are an expert copywriter for Facebook Ads."
       : `You are an expert copywriter for Facebook Ads, writing in the ansprechenden Stil von ${selectedCopywriter}.`;
@@ -189,6 +220,7 @@ Description: [Deine generierte Beschreibung für Version 3 hier]
 Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nachricht.`;
   }
 
+  // --- View Management ---
   const views = { main: mainView, options: optionsView, info: infoView, archive: archiveView };
   function showView(viewName) {
     Object.keys(views).forEach(key => {
@@ -221,6 +253,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     }
   }
 
+  // --- Navigation ---
   if (configureBtnMain) configureBtnMain.addEventListener('click', () => showView('options'));
   if (infoBtnMain) infoBtnMain.addEventListener('click', () => showView('info'));
   if (viewArchiveBtn) viewArchiveBtn.addEventListener('click', () => showView('archive'));
@@ -229,9 +262,11 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   if (backToMainBtnFromInfo) backToMainBtnFromInfo.addEventListener('click', () => showView('main'));
   if (backToMainBtnFromArchive) backToMainBtnFromArchive.addEventListener('click', () => showView('main'));
 
+  // --- Text & Selections Persistence (Main View - Version 1) ---
   async function saveMainViewSelections() {
     const dataToSave = {};
     dataToSave[STORAGE_KEY_INPUT] = inputContent.value;
+    // Save actual content, not localized placeholders
     dataToSave[STORAGE_KEY_PRIMARY] = (primaryTextField.dataset.originalContent || primaryTextField.innerText);
     dataToSave[STORAGE_KEY_HEADLINE] = (headlineField.dataset.originalContent || headlineField.innerText);
     dataToSave[STORAGE_KEY_DESCRIPTION] = (descriptionField.dataset.originalContent || descriptionField.innerText);
@@ -252,6 +287,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     headlineField.innerText = result[STORAGE_KEY_HEADLINE] || willBeFilledMsg;
     descriptionField.innerText = result[STORAGE_KEY_DESCRIPTION] || willBeFilledMsg;
     
+    // Store original content if it's not the placeholder
     if (primaryTextField.innerText !== willBeFilledMsg) primaryTextField.dataset.originalContent = primaryTextField.innerText;
     if (headlineField.innerText !== willBeFilledMsg) headlineField.dataset.originalContent = headlineField.innerText;
     if (descriptionField.innerText !== willBeFilledMsg) descriptionField.dataset.originalContent = descriptionField.innerText;
@@ -267,6 +303,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   copywriterSelect.addEventListener('change', saveMainViewSelections);
   formOfAddressSelect.addEventListener('change', saveMainViewSelections);
 
+  // --- Settings Management (Options View) ---
   async function loadSettingsForOptionsPage() {
     const result = await chrome.storage.local.get([STORAGE_KEY_API_KEY, STORAGE_KEY_MODEL]);
     apiKeyInput.value = result[STORAGE_KEY_API_KEY] || '';
@@ -299,6 +336,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     return result[STORAGE_KEY_MODEL] || 'gpt-4o'; 
   }
 
+  // --- Ad Parsing & Display Logic ---
   function parseAdVersions(text) {
     const versions = [];
     const versionBlocks = text.split(/Version \d+:/i).slice(1); 
@@ -458,6 +496,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
             headlineField.innerText = adVersions[0].headline || notFoundMsg;
             descriptionField.innerText = adVersions[0].description || notFoundMsg;
             
+            // Store original content
             primaryTextField.dataset.originalContent = adVersions[0].primaryText || notFoundMsg;
             headlineField.dataset.originalContent = adVersions[0].headline || notFoundMsg;
             descriptionField.dataset.originalContent = adVersions[0].description || notFoundMsg;
@@ -516,6 +555,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
         STORAGE_KEY_INPUT, STORAGE_KEY_PRIMARY, STORAGE_KEY_HEADLINE,
         STORAGE_KEY_DESCRIPTION, STORAGE_KEY_COPYWRITER, STORAGE_KEY_ADDRESS_FORM
       ]);
+      // alert('Input and generated texts have been reset.'); // Alert can be annoying, consider removing or making it a toast
     });
   }
 
@@ -551,7 +591,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     };
 
     if (!archiveEntry.inputContent && !archiveEntry.primaryText) {
-      alert(chrome.i18n.getMessage('pleasePasteContentAlert')); 
+      alert(chrome.i18n.getMessage('pleasePasteContentAlert')); // Or a more specific "nothing to save"
       return;
     }
 
@@ -562,6 +602,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
         archives.length = 100;
     }
     await chrome.storage.local.set({ [STORAGE_KEY_ARCHIVES]: archives });
+    // alert('Ad copy (Version 1) saved to archive!');
   }
 
   async function renderArchiveList() {
@@ -570,7 +611,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     archiveListContainer.innerHTML = ''; 
 
     const emptyMsgKey = 'emptyArchiveMessageText';
-    emptyArchiveMessage.dataset.i18nKey = emptyMsgKey; 
+    emptyArchiveMessage.dataset.i18nKey = emptyMsgKey; // For localization
     emptyArchiveMessage.textContent = chrome.i18n.getMessage(emptyMsgKey);
 
 
@@ -593,7 +634,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       
       const detailsDiv = document.createElement('div');
       detailsDiv.classList.add('archive-item-details');
-      const displayDate = new Date(entry.timestamp).toLocaleString(currentLanguage); 
+      const displayDate = new Date(entry.timestamp).toLocaleString(currentLanguage); // Localize date
       const inputSnippet = entry.inputContent ? entry.inputContent.substring(0, 50) + (entry.inputContent.length > 50 ? '...' : '') : chrome.i18n.getMessage('naText');
       
       detailsDiv.innerHTML = `
@@ -650,7 +691,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       showView('main');
       alert(chrome.i18n.getMessage('archiveLoadedAlert'));
     } else {
-      alert(chrome.i18n.getMessage('errorFindArchiveEntry')); 
+      alert('Error: Could not find archive entry.'); // Should be localized too
     }
   }
 
@@ -690,7 +731,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       })
       .catch(err => {
         console.error(`Error copying ${fieldName} to clipboard: `, err);
-        alert(chrome.i18n.getMessage('errorCopyingToClipboard', [fieldName])); 
+        alert(`Could not copy ${fieldName}. See console for details.`); // Should be localized
       });
   }
 
@@ -725,8 +766,9 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     link.addEventListener('click', () => switchTab(link));
   });
 
-  await loadInitialLanguage(); 
-  await loadMainViewSelections(); 
+  // --- Initialization ---
+  await loadInitialLanguage(); // Load and apply language first
+  await loadMainViewSelections(); // Then load other selections
   
   showView('main');
   if (tabLinks.length > 0) switchTab(tabLinks[0]);
