@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // --- DOM Elements ---
   const mainView = document.getElementById('mainView');
   const optionsView = document.getElementById('optionsView');
   const infoView = document.getElementById('infoView'); 
@@ -24,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const primaryTextField = document.getElementById('primaryText');
   const headlineField = document.getElementById('headline');
   const descriptionField = document.getElementById('description');
-  const variantsContainer = document.getElementById('variantsContainer');
+  
   const systemPromptDisplay = document.getElementById('systemPromptDisplay');
 
   const saveToArchiveBtn = document.getElementById('saveToArchiveBtn');
@@ -36,20 +37,105 @@ document.addEventListener('DOMContentLoaded', async () => {
   const copyHeadlineBtn = document.getElementById('copyHeadlineBtn');
   const copyDescriptionBtn = document.getElementById('copyDescriptionBtn');
 
+  const multiVersionTabsContainer = document.getElementById('multiVersionTabsContainer');
+  const tabLinks = document.querySelectorAll('.tab-navigation .tab-link');
+  const tabContents = {
+    primaryTexts: document.getElementById('primaryTextsTabContent'),
+    headlines: document.getElementById('headlinesTabContent'),
+    descriptions: document.getElementById('descriptionsTabContent')
+  };
 
   // --- Storage Keys ---
   const STORAGE_KEY_API_KEY = 'openai_key';
   const STORAGE_KEY_MODEL = 'openai_model';
   const STORAGE_KEY_INPUT = 'fbAdInputContent';
-  const STORAGE_KEY_PRIMARY = 'fbAdPrimaryText'; // Stores only the first version for now
-  const STORAGE_KEY_HEADLINE = 'fbAdHeadline';   // Stores only the first version for now
-  const STORAGE_KEY_DESCRIPTION = 'fbAdDescription'; // Stores only the first version for now
+  const STORAGE_KEY_PRIMARY = 'fbAdPrimaryText'; 
+  const STORAGE_KEY_HEADLINE = 'fbAdHeadline';   
+  const STORAGE_KEY_DESCRIPTION = 'fbAdDescription'; 
   const STORAGE_KEY_COPYWRITER = 'fbAdCopywriterSelect';
   const STORAGE_KEY_ADDRESS_FORM = 'fbAdAddressFormSelect';
-  const STORAGE_KEY_ARCHIVES = 'fbAdArchives'; // Archive will also store only the first version for now
+  const STORAGE_KEY_ARCHIVES = 'fbAdArchives';
 
+  const currentLanguage = 'de'; // Fixed language
 
-  // --- System Prompt Generation ---
+  // --- Localization ---
+  async function applyLocalization() {
+    document.documentElement.lang = currentLanguage;
+
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+      const key = el.dataset.i18nKey;
+      const message = chrome.i18n.getMessage(key);
+      if (message) {
+        el.textContent = message;
+      }
+    });
+    document.querySelectorAll('[data-i18n-html-key]').forEach(el => {
+        const key = el.dataset.i18nHtmlKey;
+        const message = chrome.i18n.getMessage(key);
+        if (message) {
+            el.innerHTML = message; 
+        }
+    });
+    document.querySelectorAll('[data-i18n-placeholder-key]').forEach(el => {
+      const key = el.dataset.i18nPlaceholderKey;
+      const message = chrome.i18n.getMessage(key);
+      if (message) {
+        el.placeholder = message;
+      }
+    });
+    document.querySelectorAll('[title^="__MSG_"]').forEach(el => {
+        const key = el.title.replace("__MSG_", "").replace("__", "");
+        const message = chrome.i18n.getMessage(key);
+        if (message) {
+            el.title = message;
+        }
+    });
+    
+    updateDynamicPlaceholders();
+    updateCopyButtonTitles();
+    updateTabPlaceholders(true); 
+
+    if (infoView.style.display === 'block' && systemPromptDisplay) {
+      const currentCopywriter = copywriterSelect.value || "Default";
+      const currentAddressForm = formOfAddressSelect.value || "Du";
+      systemPromptDisplay.innerText = getSystemPrompt(currentCopywriter, currentAddressForm);
+    }
+    if (archiveView.style.display === 'block') {
+        renderArchiveList();
+    }
+  }
+
+  async function loadInitialLanguage() {
+    applyLocalization(); // Apply German localization directly
+  }
+  
+  function updateDynamicPlaceholders() {
+    const willBeFilledMsg = chrome.i18n.getMessage('willBeFilledText');
+    if (primaryTextField.innerText === "Will be filled..." || primaryTextField.innerText === "Wird gefüllt...") primaryTextField.innerText = willBeFilledMsg;
+    if (headlineField.innerText === "Will be filled..." || headlineField.innerText === "Wird gefüllt...") headlineField.innerText = willBeFilledMsg;
+    if (descriptionField.innerText === "Will be filled..." || descriptionField.innerText === "Wird gefüllt...") descriptionField.innerText = willBeFilledMsg;
+  }
+
+  function updateCopyButtonTitles() {
+    const primaryTextTitle = chrome.i18n.getMessage('primaryTextV1Title');
+    const headlineTitle = chrome.i18n.getMessage('headlineV1Title');
+    const descriptionTitle = chrome.i18n.getMessage('descriptionV1Title');
+
+    copyPrimaryTextBtn.title = chrome.i18n.getMessage('copyButtonTitleGeneric', [primaryTextTitle]);
+    copyHeadlineBtn.title = chrome.i18n.getMessage('copyButtonTitleGeneric', [headlineTitle]);
+    copyDescriptionBtn.title = chrome.i18n.getMessage('copyButtonTitleGeneric', [descriptionTitle]);
+  }
+  
+  function updateTabPlaceholders(forceUpdate = false) {
+    const messageKey = 'tabGenerateAdCopyMessage';
+    const message = chrome.i18n.getMessage(messageKey);
+    Object.values(tabContents).forEach(tc => {
+        if (forceUpdate || tc.innerHTML.includes("versions here") || tc.innerHTML.includes("Versionen hier")) {
+            tc.innerHTML = `<p data-i18n-key="${messageKey}">${message}</p>`;
+        }
+    });
+  }
+
   function getSystemPrompt(selectedCopywriter = "Default", formOfAddress = "Du") {
     const copywriterInstruction = selectedCopywriter === "Default" 
       ? "You are an expert copywriter for Facebook Ads."
@@ -103,18 +189,24 @@ Description: [Deine generierte Beschreibung für Version 3 hier]
 Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nachricht.`;
   }
 
-  // --- View Management ---
   const views = { main: mainView, options: optionsView, info: infoView, archive: archiveView };
   function showView(viewName) {
     Object.keys(views).forEach(key => {
       views[key].style.display = (key === viewName) ? 'block' : 'none';
     });
+    
+    const backButtonTitle = chrome.i18n.getMessage('backButton');
+    backToMainBtnFromOptions.title = backButtonTitle;
+    backToMainBtnFromInfo.title = backButtonTitle;
+    backToMainBtnFromArchive.title = backButtonTitle;
+
     backToMainBtnFromOptions.style.display = (viewName === 'options') ? 'inline-block' : 'none';
     backToMainBtnFromInfo.style.display = (viewName === 'info') ? 'inline-block' : 'none';
     backToMainBtnFromArchive.style.display = (viewName === 'archive') ? 'inline-block' : 'none';
     
-    const mainHeaderIcons = document.querySelector('#mainView .header-icons');
-    if (mainHeaderIcons) mainHeaderIcons.style.display = (viewName === 'main') ? 'flex' : 'none';
+    const mainHeaderControls = document.querySelector('#mainView .header-controls');
+    if (mainHeaderControls) mainHeaderControls.style.display = (viewName === 'main') ? 'flex' : 'none';
+
 
     if (viewName === 'info' && systemPromptDisplay) {
       const currentCopywriter = copywriterSelect.value || "Default";
@@ -129,7 +221,6 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     }
   }
 
-  // --- Navigation ---
   if (configureBtnMain) configureBtnMain.addEventListener('click', () => showView('options'));
   if (infoBtnMain) infoBtnMain.addEventListener('click', () => showView('info'));
   if (viewArchiveBtn) viewArchiveBtn.addEventListener('click', () => showView('archive'));
@@ -138,13 +229,12 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   if (backToMainBtnFromInfo) backToMainBtnFromInfo.addEventListener('click', () => showView('main'));
   if (backToMainBtnFromArchive) backToMainBtnFromArchive.addEventListener('click', () => showView('main'));
 
-  // --- Text & Selections Persistence (Main View) ---
   async function saveMainViewSelections() {
     const dataToSave = {};
     dataToSave[STORAGE_KEY_INPUT] = inputContent.value;
-    dataToSave[STORAGE_KEY_PRIMARY] = primaryTextField.innerText; // Saves only the first version
-    dataToSave[STORAGE_KEY_HEADLINE] = headlineField.innerText;   // Saves only the first version
-    dataToSave[STORAGE_KEY_DESCRIPTION] = descriptionField.innerText; // Saves only the first version
+    dataToSave[STORAGE_KEY_PRIMARY] = (primaryTextField.dataset.originalContent || primaryTextField.innerText);
+    dataToSave[STORAGE_KEY_HEADLINE] = (headlineField.dataset.originalContent || headlineField.innerText);
+    dataToSave[STORAGE_KEY_DESCRIPTION] = (descriptionField.dataset.originalContent || descriptionField.innerText);
     dataToSave[STORAGE_KEY_COPYWRITER] = copywriterSelect.value;
     dataToSave[STORAGE_KEY_ADDRESS_FORM] = formOfAddressSelect.value;
     await chrome.storage.local.set(dataToSave);
@@ -156,27 +246,31 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       STORAGE_KEY_DESCRIPTION, STORAGE_KEY_COPYWRITER, STORAGE_KEY_ADDRESS_FORM
     ]);
     if (result[STORAGE_KEY_INPUT]) inputContent.value = result[STORAGE_KEY_INPUT];
-    primaryTextField.innerText = result[STORAGE_KEY_PRIMARY] || "Will be filled...";
-    headlineField.innerText = result[STORAGE_KEY_HEADLINE] || "Will be filled...";
-    descriptionField.innerText = result[STORAGE_KEY_DESCRIPTION] || "Will be filled...";
+    
+    const willBeFilledMsg = chrome.i18n.getMessage('willBeFilledText');
+    primaryTextField.innerText = result[STORAGE_KEY_PRIMARY] || willBeFilledMsg;
+    headlineField.innerText = result[STORAGE_KEY_HEADLINE] || willBeFilledMsg;
+    descriptionField.innerText = result[STORAGE_KEY_DESCRIPTION] || willBeFilledMsg;
+    
+    if (primaryTextField.innerText !== willBeFilledMsg) primaryTextField.dataset.originalContent = primaryTextField.innerText;
+    if (headlineField.innerText !== willBeFilledMsg) headlineField.dataset.originalContent = headlineField.innerText;
+    if (descriptionField.innerText !== willBeFilledMsg) descriptionField.dataset.originalContent = descriptionField.innerText;
+
     if (result[STORAGE_KEY_COPYWRITER]) copywriterSelect.value = result[STORAGE_KEY_COPYWRITER];
     if (result[STORAGE_KEY_ADDRESS_FORM]) formOfAddressSelect.value = result[STORAGE_KEY_ADDRESS_FORM];
-    // variantsContainer is not persisted directly, it's repopulated on generation
-    variantsContainer.style.display = 'none';
-    variantsContainer.innerHTML = '';
+    
+    multiVersionTabsContainer.style.display = 'none';
+    updateTabPlaceholders(true);
   }
   
-  await loadMainViewSelections(); 
-
   inputContent.addEventListener('input', saveMainViewSelections);
   copywriterSelect.addEventListener('change', saveMainViewSelections);
   formOfAddressSelect.addEventListener('change', saveMainViewSelections);
 
-  // --- Settings Management (Options View) ---
   async function loadSettingsForOptionsPage() {
     const result = await chrome.storage.local.get([STORAGE_KEY_API_KEY, STORAGE_KEY_MODEL]);
     apiKeyInput.value = result[STORAGE_KEY_API_KEY] || '';
-    modelSelect.value = result[STORAGE_KEY_MODEL] || 'gpt-4o'; // Default to gpt-4o
+    modelSelect.value = result[STORAGE_KEY_MODEL] || 'gpt-4o'; 
   }
 
   if (saveSettingsBtn) {
@@ -190,7 +284,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
         apiKeyInput.value = ''; 
       }
       await chrome.storage.local.set({ [STORAGE_KEY_MODEL]: selectedModel });
-      alert('Settings saved.');
+      alert(chrome.i18n.getMessage('settingsSavedAlert'));
       showView('main');
     });
   }
@@ -202,15 +296,14 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
 
   async function getSelectedModel() {
     const result = await chrome.storage.local.get(STORAGE_KEY_MODEL);
-    return result[STORAGE_KEY_MODEL] || 'gpt-4o'; // Default to gpt-4o
+    return result[STORAGE_KEY_MODEL] || 'gpt-4o'; 
   }
 
-  // --- Ad Generation Logic ---
   function parseAdVersions(text) {
     const versions = [];
-    const versionBlocks = text.split(/Version \d+:/i).slice(1); // Split by "Version X:" and remove first empty part
+    const versionBlocks = text.split(/Version \d+:/i).slice(1); 
 
-    versionBlocks.forEach((block, index) => {
+    versionBlocks.forEach((block) => {
       const version = { primaryText: "", headline: "", description: "" };
       const lines = block.trim().split('\n');
       let currentPart = null;
@@ -228,8 +321,8 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
         } else if (cleanLine.toLowerCase().startsWith("description:")) {
           currentPart = "description";
           version.description = cleanLine.substring("description:".length).trim();
-        } else if (currentPart === "primary") { // Continue collecting primary text lines
-          primaryTextBuffer.push(line); // Keep original spacing for paragraphs/bullets
+        } else if (currentPart === "primary") { 
+          primaryTextBuffer.push(line); 
         }
       });
       version.primaryText = primaryTextBuffer.join('\n').trim();
@@ -241,6 +334,67 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     return versions;
   }
 
+  function displayAdVersionsInTabs(adVersions) {
+    Object.values(tabContents).forEach(tc => tc.innerHTML = '');
+
+    if (adVersions.length === 0) {
+      const noVersionsMsg = chrome.i18n.getMessage('tabNoVersionsParsedMessage');
+      Object.values(tabContents).forEach(tc => tc.innerHTML = `<p>${noVersionsMsg}</p>`);
+      multiVersionTabsContainer.style.display = 'block';
+      return;
+    }
+
+    const primaryTextMsg = chrome.i18n.getMessage('tabPrimaryTexts');
+    const headlinesMsg = chrome.i18n.getMessage('tabHeadlines');
+    const descriptionsMsg = chrome.i18n.getMessage('tabDescriptions');
+
+    adVersions.forEach((version, index) => {
+      const versionNumber = index + 1;
+
+      const ptTitle = chrome.i18n.getMessage('versionItemTitle', [primaryTextMsg, versionNumber.toString()]);
+      const ptItem = createVersionItemElement(version.primaryText, ptTitle, ptTitle);
+      tabContents.primaryTexts.appendChild(ptItem);
+
+      const hlTitle = chrome.i18n.getMessage('versionItemTitle', [headlinesMsg, versionNumber.toString()]);
+      const hlItem = createVersionItemElement(version.headline, hlTitle, hlTitle);
+      tabContents.headlines.appendChild(hlItem);
+
+      const descTitle = chrome.i18n.getMessage('versionItemTitle', [descriptionsMsg, versionNumber.toString()]);
+      const descItem = createVersionItemElement(version.description, descTitle, descTitle);
+      tabContents.descriptions.appendChild(descItem);
+    });
+    multiVersionTabsContainer.style.display = 'block';
+    switchTab(tabLinks[0]); 
+  }
+
+  function createVersionItemElement(text, title, copyButtonTitleText) {
+    const itemDiv = document.createElement('div');
+    itemDiv.classList.add('version-item', 'preview-box');
+
+    const headerDiv = document.createElement('div');
+    headerDiv.classList.add('preview-box-header');
+    
+    const strongTitle = document.createElement('strong');
+    strongTitle.textContent = title;
+    
+    const copyButton = document.createElement('button');
+    copyButton.classList.add('copy-btn', 'copy-version-btn');
+    copyButton.title = chrome.i18n.getMessage('copyButtonTitleGeneric', [copyButtonTitleText]);
+    copyButton.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`;
+    copyButton.addEventListener('click', () => copyToClipboard(text, copyButtonTitleText));
+
+    headerDiv.appendChild(strongTitle);
+    headerDiv.appendChild(copyButton);
+
+    const textContentDiv = document.createElement('div');
+    textContentDiv.classList.add('text-content-display');
+    textContentDiv.innerText = text || chrome.i18n.getMessage('naText');
+
+    itemDiv.appendChild(headerDiv);
+    itemDiv.appendChild(textContentDiv);
+    return itemDiv;
+  }
+
 
   if (generateBtn) {
     generateBtn.addEventListener('click', async () => {
@@ -249,22 +403,22 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       const selectedAddressForm = formOfAddressSelect.value;
 
       if (!input.trim()) {
-        alert("Please paste your content first.");
+        alert(chrome.i18n.getMessage('pleasePasteContentAlert'));
         return;
       }
       const key = await getApiKey();
       if (!key) {
-        alert("OpenAI API Key is not set. Please configure it in settings. (Click the ⚙️ icon)");
+        alert(chrome.i18n.getMessage('apiKeyNotSetAlert'));
         showView('options');
         return;
       }
 
-      primaryTextField.innerText = "Generating...";
-      headlineField.innerText = "Generating...";
-      descriptionField.innerText = "Generating...";
-      variantsContainer.innerHTML = '<h4>Additional Versions:</h4>Generating...';
-      variantsContainer.style.display = 'block';
-
+      const generatingMsg = chrome.i18n.getMessage('generatingText');
+      primaryTextField.innerText = generatingMsg;
+      headlineField.innerText = generatingMsg;
+      descriptionField.innerText = generatingMsg;
+      Object.values(tabContents).forEach(tc => tc.innerHTML = `<p>${generatingMsg}</p>`);
+      multiVersionTabsContainer.style.display = 'block';
 
       const systemPrompt = getSystemPrompt(selectedCopywriter, selectedAddressForm);
       const currentModel = await getSelectedModel();
@@ -282,7 +436,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
               { role: "system", content: systemPrompt },
               { role: "user", content: `Hier ist der Content, auf dem die Ad Copy basieren soll: ${input}` }
             ],
-            temperature: 0.75 // Slightly higher temp for more variation
+            temperature: 0.75 
           })
         });
 
@@ -296,39 +450,30 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
 
         if (rawText) {
           const adVersions = parseAdVersions(rawText);
+          const notFoundMsg = chrome.i18n.getMessage('notFoundText');
+          const couldNotParseMsg = chrome.i18n.getMessage('couldNotParseText');
 
           if (adVersions.length > 0) {
-            primaryTextField.innerText = adVersions[0].primaryText || "Not found";
-            headlineField.innerText = adVersions[0].headline || "Not found";
-            descriptionField.innerText = adVersions[0].description || "Not found";
+            primaryTextField.innerText = adVersions[0].primaryText || notFoundMsg;
+            headlineField.innerText = adVersions[0].headline || notFoundMsg;
+            descriptionField.innerText = adVersions[0].description || notFoundMsg;
+            
+            primaryTextField.dataset.originalContent = adVersions[0].primaryText || notFoundMsg;
+            headlineField.dataset.originalContent = adVersions[0].headline || notFoundMsg;
+            descriptionField.dataset.originalContent = adVersions[0].description || notFoundMsg;
 
-            variantsContainer.innerHTML = '<h4>Additional Versions:</h4>'; // Clear "Generating..."
-            if (adVersions.length > 1) {
-              adVersions.slice(1).forEach((version, index) => {
-                const versionDiv = document.createElement('div');
-                versionDiv.classList.add('preview-box'); // Reuse existing style for consistency
-                versionDiv.innerHTML = `
-                  <strong>Version ${index + 2}</strong><br>
-                  <strong>Primary Text:</strong> <div style="white-space: pre-wrap;">${version.primaryText || "N/A"}</div>
-                  <strong>Headline:</strong> <div style="white-space: pre-wrap;">${version.headline || "N/A"}</div>
-                  <strong>Description:</strong> <div style="white-space: pre-wrap;">${version.description || "N/A"}</div>
-                `;
-                variantsContainer.appendChild(versionDiv);
-              });
-              variantsContainer.style.display = 'block';
-            } else {
-              variantsContainer.innerHTML += '<p>No additional versions generated or parsed.</p>';
-              variantsContainer.style.display = 'block';
-            }
+            displayAdVersionsInTabs(adVersions);
           } else {
-            primaryTextField.innerText = "Could not parse versions.";
-            headlineField.innerText = "Could not parse versions.";
-            descriptionField.innerText = "Could not parse versions.";
-            variantsContainer.innerHTML = '<h4>Additional Versions:</h4><p>Could not parse any versions from the AI response. Raw response:</p><pre>' + rawText + '</pre>';
-            variantsContainer.style.display = 'block';
+            primaryTextField.innerText = couldNotParseMsg;
+            headlineField.innerText = couldNotParseMsg;
+            descriptionField.innerText = couldNotParseMsg;
+            primaryTextField.dataset.originalContent = couldNotParseMsg;
+            headlineField.dataset.originalContent = couldNotParseMsg;
+            descriptionField.dataset.originalContent = couldNotParseMsg;
+            Object.values(tabContents).forEach(tc => tc.innerHTML = `<p>${couldNotParseMsg} Raw response:</p><pre>${rawText}</pre>`);
           }
           
-          await saveMainViewSelections(); // Saves only the first version for now
+          await saveMainViewSelections();
           saveToHistory(rawText, currentModel); 
         } else {
           throw new Error("No content received from API.");
@@ -336,36 +481,44 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
 
       } catch (error) {
         console.error("Error generating ad copy:", error);
-        primaryTextField.innerText = "Error generating.";
-        headlineField.innerText = "Error generating.";
-        descriptionField.innerText = "Error generating.";
-        variantsContainer.innerHTML = `<h4>Additional Versions:</h4><p>Error: ${error.message}</p>`;
-        variantsContainer.style.display = 'block';
+        const errorGeneratingMsg = chrome.i18n.getMessage('errorGeneratingText');
+        primaryTextField.innerText = errorGeneratingMsg;
+        headlineField.innerText = errorGeneratingMsg;
+        descriptionField.innerText = errorGeneratingMsg;
+        primaryTextField.dataset.originalContent = errorGeneratingMsg;
+        headlineField.dataset.originalContent = errorGeneratingMsg;
+        descriptionField.dataset.originalContent = errorGeneratingMsg;
+        Object.values(tabContents).forEach(tc => tc.innerHTML = `<p>Error: ${error.message}</p>`);
         alert(`Error generating ad copy: ${error.message}`);
       }
     });
   }
   
-  // --- Reset Button Logic ---
   if (resetBtn) {
     resetBtn.addEventListener('click', async () => {
       inputContent.value = '';
-      primaryTextField.innerText = 'Will be filled...';
-      headlineField.innerText = 'Will be filled...';
-      descriptionField.innerText = 'Will be filled...';
-      variantsContainer.style.display = 'none';
-      variantsContainer.innerHTML = '';
+      const willBeFilledMsg = chrome.i18n.getMessage('willBeFilledText');
+      primaryTextField.innerText = willBeFilledMsg;
+      headlineField.innerText = willBeFilledMsg;
+      descriptionField.innerText = willBeFilledMsg;
+      primaryTextField.removeAttribute('data-original-content');
+      headlineField.removeAttribute('data-original-content');
+      descriptionField.removeAttribute('data-original-content');
+
       copywriterSelect.value = 'Default'; 
       formOfAddressSelect.value = 'Du';
+      
+      multiVersionTabsContainer.style.display = 'none';
+      updateTabPlaceholders(true);
+      if (tabLinks.length > 0) switchTab(tabLinks[0]);
+
       await chrome.storage.local.remove([
         STORAGE_KEY_INPUT, STORAGE_KEY_PRIMARY, STORAGE_KEY_HEADLINE,
         STORAGE_KEY_DESCRIPTION, STORAGE_KEY_COPYWRITER, STORAGE_KEY_ADDRESS_FORM
       ]);
-      alert('Input and generated texts have been reset.');
     });
   }
 
-  // --- Save to History (for OpenAI calls, not user archive) ---
   function saveToHistory(content, modelUsed) {
     chrome.storage.local.get({ history: [] }, (data) => {
       const history = data.history;
@@ -384,22 +537,21 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     });
   }
 
-  // --- Archive Functionality ---
   async function handleSaveToArchive() {
+    const willBeFilledMsg = chrome.i18n.getMessage('willBeFilledText');
     const archiveEntry = {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
       inputContent: inputContent.value,
       copywriter: copywriterSelect.value,
       formOfAddress: formOfAddressSelect.value,
-      primaryText: primaryTextField.innerText, // Saves only the first version
-      headline: headlineField.innerText,     // Saves only the first version
-      description: descriptionField.innerText, // Saves only the first version
+      primaryText: primaryTextField.dataset.originalContent || (primaryTextField.innerText === willBeFilledMsg ? "" : primaryTextField.innerText), 
+      headline: headlineField.dataset.originalContent || (headlineField.innerText === willBeFilledMsg ? "" : headlineField.innerText),     
+      description: descriptionField.dataset.originalContent || (descriptionField.innerText === willBeFilledMsg ? "" : descriptionField.innerText), 
     };
 
-    if (!archiveEntry.inputContent && 
-        (archiveEntry.primaryText === "Will be filled..." || !archiveEntry.primaryText)) {
-      alert("Nothing to save. Please input content or generate an ad first.");
+    if (!archiveEntry.inputContent && !archiveEntry.primaryText) {
+      alert(chrome.i18n.getMessage('pleasePasteContentAlert')); 
       return;
     }
 
@@ -410,7 +562,6 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
         archives.length = 100;
     }
     await chrome.storage.local.set({ [STORAGE_KEY_ARCHIVES]: archives });
-    alert('Ad copy (first version) saved to archive!');
   }
 
   async function renderArchiveList() {
@@ -418,11 +569,23 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     const archives = result[STORAGE_KEY_ARCHIVES];
     archiveListContainer.innerHTML = ''; 
 
+    const emptyMsgKey = 'emptyArchiveMessageText';
+    emptyArchiveMessage.dataset.i18nKey = emptyMsgKey; 
+    emptyArchiveMessage.textContent = chrome.i18n.getMessage(emptyMsgKey);
+
+
     if (archives.length === 0) {
       emptyArchiveMessage.style.display = 'block';
       return;
     }
     emptyArchiveMessage.style.display = 'none';
+
+    const savedMsg = chrome.i18n.getMessage('archiveItemSaved');
+    const inputMsg = chrome.i18n.getMessage('archiveItemInput');
+    const primaryV1Msg = chrome.i18n.getMessage('archiveItemPrimaryV1');
+    const loadV1Msg = chrome.i18n.getMessage('archiveLoadButton');
+    const deleteMsg = chrome.i18n.getMessage('archiveDeleteButton');
+
 
     archives.forEach(entry => {
       const itemDiv = document.createElement('div');
@@ -430,25 +593,25 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       
       const detailsDiv = document.createElement('div');
       detailsDiv.classList.add('archive-item-details');
-      const displayDate = new Date(entry.timestamp).toLocaleString();
-      const inputSnippet = entry.inputContent ? entry.inputContent.substring(0, 50) + (entry.inputContent.length > 50 ? '...' : '') : 'No input';
+      const displayDate = new Date(entry.timestamp).toLocaleString(currentLanguage); 
+      const inputSnippet = entry.inputContent ? entry.inputContent.substring(0, 50) + (entry.inputContent.length > 50 ? '...' : '') : chrome.i18n.getMessage('naText');
       
       detailsDiv.innerHTML = `
-        <strong>Saved:</strong> <span class="archive-data">${displayDate}</span>
-        <strong>Input:</strong> <span class="archive-data">${inputSnippet}</span>
-        <strong>Primary (V1):</strong> <span class="archive-data">${entry.primaryText.substring(0,50)}...</span>
+        <strong>${savedMsg}</strong> <span class="archive-data">${displayDate}</span>
+        <strong>${inputMsg}</strong> <span class="archive-data">${inputSnippet}</span>
+        <strong>${primaryV1Msg}</strong> <span class="archive-data">${(entry.primaryText || "").substring(0,50)}...</span>
       `;
 
       const actionsDiv = document.createElement('div');
       actionsDiv.classList.add('archive-item-actions');
 
       const loadButton = document.createElement('button');
-      loadButton.textContent = 'Load (V1)';
+      loadButton.textContent = loadV1Msg;
       loadButton.classList.add('btn-secondary');
       loadButton.addEventListener('click', () => loadFromArchive(entry.id));
 
       const deleteButton = document.createElement('button');
-      deleteButton.textContent = 'Delete';
+      deleteButton.textContent = deleteMsg;
       deleteButton.classList.add('btn-danger');
       deleteButton.addEventListener('click', () => deleteFromArchive(entry.id));
 
@@ -465,27 +628,34 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     const result = await chrome.storage.local.get({ [STORAGE_KEY_ARCHIVES]: [] });
     const archives = result[STORAGE_KEY_ARCHIVES];
     const entryToLoad = archives.find(entry => entry.id === archiveId);
+    const willBeFilledMsg = chrome.i18n.getMessage('willBeFilledText');
 
     if (entryToLoad) {
       inputContent.value = entryToLoad.inputContent;
       copywriterSelect.value = entryToLoad.copywriter;
       formOfAddressSelect.value = entryToLoad.formOfAddress;
-      primaryTextField.innerText = entryToLoad.primaryText; // Loads only the first version
-      headlineField.innerText = entryToLoad.headline;     // Loads only the first version
-      descriptionField.innerText = entryToLoad.description; // Loads only the first version
-      variantsContainer.style.display = 'none'; // Clear variants when loading from archive
-      variantsContainer.innerHTML = '';
+      primaryTextField.innerText = entryToLoad.primaryText || willBeFilledMsg; 
+      headlineField.innerText = entryToLoad.headline || willBeFilledMsg;     
+      descriptionField.innerText = entryToLoad.description || willBeFilledMsg; 
       
+      primaryTextField.dataset.originalContent = entryToLoad.primaryText || "";
+      headlineField.dataset.originalContent = entryToLoad.headline || "";
+      descriptionField.dataset.originalContent = entryToLoad.description || "";
+      
+      multiVersionTabsContainer.style.display = 'none';
+      updateTabPlaceholders(true);
+      if (tabLinks.length > 0) switchTab(tabLinks[0]);
+
       await saveMainViewSelections();
       showView('main');
-      alert('Ad copy (first version) loaded from archive.');
+      alert(chrome.i18n.getMessage('archiveLoadedAlert'));
     } else {
-      alert('Error: Could not find archive entry.');
+      alert(chrome.i18n.getMessage('errorFindArchiveEntry')); 
     }
   }
 
   async function deleteFromArchive(archiveId) {
-    if (!confirm('Are you sure you want to delete this archived item?')) {
+    if (!confirm(chrome.i18n.getMessage('archiveDeleteConfirm'))) {
         return;
     }
     const result = await chrome.storage.local.get({ [STORAGE_KEY_ARCHIVES]: [] });
@@ -493,45 +663,71 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     archives = archives.filter(entry => entry.id !== archiveId);
     await chrome.storage.local.set({ [STORAGE_KEY_ARCHIVES]: archives });
     renderArchiveList();
-    alert('Archived item deleted.');
+    alert(chrome.i18n.getMessage('archiveDeletedAlert'));
   }
 
   if (saveToArchiveBtn) {
     saveToArchiveBtn.addEventListener('click', handleSaveToArchive);
   }
 
-  // --- Copy to Clipboard ---
   function copyToClipboard(text, fieldName) {
-    if (!text || text === "Will be filled..." || text === "Generating..." || text === "Error generating." || text === "Not found" || text === "Could not parse versions.") {
-      alert(`No valid content to copy for ${fieldName}.`);
+    const naText = chrome.i18n.getMessage('naText');
+    const willBeFilled = chrome.i18n.getMessage('willBeFilledText');
+    const generating = chrome.i18n.getMessage('generatingText');
+    const errorGenerating = chrome.i18n.getMessage('errorGeneratingText');
+    const notFound = chrome.i18n.getMessage('notFoundText');
+    const couldNotParse = chrome.i18n.getMessage('couldNotParseText');
+
+    const nonCopyableTexts = [willBeFilled, generating, errorGenerating, notFound, couldNotParse, naText, ""];
+
+    if (nonCopyableTexts.includes(text)) {
+      alert(chrome.i18n.getMessage('noValidContentToCopyAlert', [fieldName]));
       return;
     }
     navigator.clipboard.writeText(text)
       .then(() => {
-        alert(`${fieldName} (Version 1) copied to clipboard!`);
+        alert(chrome.i18n.getMessage('copiedToClipboardAlert', [fieldName]));
       })
       .catch(err => {
         console.error(`Error copying ${fieldName} to clipboard: `, err);
-        alert(`Could not copy ${fieldName}. See console for details.`);
+        alert(chrome.i18n.getMessage('errorCopyingToClipboard', [fieldName])); 
       });
   }
 
   if (copyPrimaryTextBtn) {
     copyPrimaryTextBtn.addEventListener('click', () => {
-      copyToClipboard(primaryTextField.innerText, 'Primary Text');
+      copyToClipboard(primaryTextField.dataset.originalContent || primaryTextField.innerText, chrome.i18n.getMessage('primaryTextV1Title'));
     });
   }
   if (copyHeadlineBtn) {
     copyHeadlineBtn.addEventListener('click', () => {
-      copyToClipboard(headlineField.innerText, 'Headline');
+      copyToClipboard(headlineField.dataset.originalContent || headlineField.innerText, chrome.i18n.getMessage('headlineV1Title'));
     });
   }
   if (copyDescriptionBtn) {
     copyDescriptionBtn.addEventListener('click', () => {
-      copyToClipboard(descriptionField.innerText, 'Description');
+      copyToClipboard(descriptionField.dataset.originalContent || descriptionField.innerText, chrome.i18n.getMessage('descriptionV1Title'));
     });
   }
 
-  // Initialize view
+  function switchTab(clickedTab) {
+    tabLinks.forEach(link => link.classList.remove('active'));
+    Object.values(tabContents).forEach(content => content.classList.remove('active'));
+
+    clickedTab.classList.add('active');
+    const tabId = clickedTab.dataset.tab;
+    if (document.getElementById(tabId)) {
+        document.getElementById(tabId).classList.add('active');
+    }
+  }
+
+  tabLinks.forEach(link => {
+    link.addEventListener('click', () => switchTab(link));
+  });
+
+  await loadInitialLanguage(); 
+  await loadMainViewSelections(); 
+  
   showView('main');
+  if (tabLinks.length > 0) switchTab(tabLinks[0]);
 });
