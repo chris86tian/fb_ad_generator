@@ -86,5 +86,16 @@
   "naText": { "message": "N/A" },
   "langDE": { "message": "DE" },
   "langEN": { "message": "EN" },
-  "backButton": { "message": "Back" }
+  "backButton": { "message": "Back" },
+  "apiKeyInfoText": { "message": "You can get your OpenAI API key" },
+  "apiKeyLinkText": { "message": "here." },
+  "targetAudienceLabel": { "message": "Target Audience:" },
+  "targetAudiencePlaceholder": { "message": "Describe your target audience (optional)..." },
+  "howToUseStepTargetAudience": { "message": "<strong>Target Audience (Optional):</strong> Describe your target audience to tailor the text even better." },
+  "saveAdButton": { "message": "Save Ad" },
+  "archiveLoadButtonText": { "message": "Load" },
+  "nothingToSaveAlert": { "message": "Nothing to save. Please input content or generate an ad first." },
+  "archiveSavedAlert": { "message": "Ad set saved to archive." },
+  "archiveFindErrorAlert": { "message": "Error: Could not find the archived item." },
+  "copyErrorAlert": { "message": "Could not copy $1 to clipboard.", "placeholders": { "fieldName": { "content": "$1" } } }
 }

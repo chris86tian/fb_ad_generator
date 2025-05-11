@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const generateBtn = document.getElementById('generateBtn');
   const resetBtn = document.getElementById('resetBtn'); 
   const inputContent = document.getElementById('inputContent');
+  const targetAudienceInput = document.getElementById('targetAudienceInput'); // Added for clarity
   const copywriterSelect = document.getElementById('copywriterSelect');
   const formOfAddressSelect = document.getElementById('formOfAddressSelect');
 
@@ -49,13 +50,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const STORAGE_KEY_API_KEY = 'openai_key';
   const STORAGE_KEY_MODEL = 'openai_model';
   const STORAGE_KEY_INPUT = 'fbAdInputContent';
+  const STORAGE_KEY_TARGET_AUDIENCE = 'fbAdTargetAudience'; // Corrected key
   const STORAGE_KEY_PRIMARY = 'fbAdPrimaryText'; 
   const STORAGE_KEY_HEADLINE = 'fbAdHeadline';   
   const STORAGE_KEY_DESCRIPTION = 'fbAdDescription'; 
   const STORAGE_KEY_COPYWRITER = 'fbAdCopywriterSelect';
   const STORAGE_KEY_ADDRESS_FORM = 'fbAdAddressFormSelect';
   const STORAGE_KEY_ARCHIVES = 'fbAdArchives';
-  const STORAGE_KEY_LAST_RAW_RESPONSE = 'fbAdLastRawResponse'; // New key
+  const STORAGE_KEY_LAST_RAW_RESPONSE = 'fbAdLastRawResponse';
 
   let currentLanguage = 'de'; // Default language
 
@@ -100,7 +102,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (infoView.style.display === 'block' && systemPromptDisplay) {
       const currentCopywriter = copywriterSelect.value || "Default";
       const currentAddressForm = formOfAddressSelect.value || "Du";
-      systemPromptDisplay.innerText = getSystemPrompt(currentCopywriter, currentAddressForm);
+      const currentTargetAudience = targetAudienceInput.value || "";
+      systemPromptDisplay.innerText = getSystemPrompt(currentCopywriter, currentAddressForm, currentTargetAudience);
     }
     if (archiveView.style.display === 'block') {
         renderArchiveList();
@@ -139,14 +142,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // --- System Prompt Generation ---
-  function getSystemPrompt(selectedCopywriter = "Default", formOfAddress = "Du") {
+  function getSystemPrompt(selectedCopywriter = "Default", formOfAddress = "Du", targetAudience = "") {
     const copywriterInstruction = selectedCopywriter === "Default" 
       ? "You are an expert copywriter for Facebook Ads."
       : `You are an expert copywriter for Facebook Ads, writing in the ansprechenden Stil von ${selectedCopywriter}.`;
 
+    let targetAudienceSegment = "";
+    if (targetAudience && targetAudience.trim() !== "") {
+      targetAudienceSegment = `
+
+ZIELGRUPPENFOKUS:
+Bitte berücksichtige bei der Erstellung der Anzeige die folgende Beschreibung der Zielgruppe, um den Text optimal auf deren Bedürfnisse, Wünsche, Schmerzpunkte und Sprache anzupassen:
+"${targetAudience.trim()}"
+Achte darauf, dass der Ton und die Wortwahl der Anzeige diese Zielgruppe direkt ansprechen.`;
+    }
+
     return `${copywriterInstruction}
 Bitte erstelle eine Facebook Ad Copy basierend auf den folgenden Copywriting-Prinzipien.
-Schreibe die Ad Copy in der ${formOfAddress}-Form und beachte die Spezifikationen der Facebook Ads.
+Schreibe die Ad Copy in der ${formOfAddress}-Form und beachte die Spezifikationen der Facebook Ads.${targetAudienceSegment}
 
 Copywriting-Prinzipien:
 1. Verwende eine klare, natürliche und prägnante Sprache (keine KI-Floskeln wie 'entfesseln Sie die Kraft von', 'revolutionieren Sie Ihr', 'in der heutigen schnelllebigen Welt').
@@ -214,7 +227,8 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     if (viewName === 'info' && systemPromptDisplay) {
       const currentCopywriter = copywriterSelect.value || "Default";
       const currentAddressForm = formOfAddressSelect.value || "Du";
-      systemPromptDisplay.innerText = getSystemPrompt(currentCopywriter, currentAddressForm);
+      const currentTargetAudience = targetAudienceInput.value || "";
+      systemPromptDisplay.innerText = getSystemPrompt(currentCopywriter, currentAddressForm, currentTargetAudience);
     }
     if (viewName === 'options') {
       loadSettingsForOptionsPage();
@@ -237,23 +251,24 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   async function saveMainViewSelections() {
     const dataToSave = {};
     dataToSave[STORAGE_KEY_INPUT] = inputContent.value;
+    dataToSave[STORAGE_KEY_TARGET_AUDIENCE] = targetAudienceInput.value;
     dataToSave[STORAGE_KEY_PRIMARY] = (primaryTextField.dataset.originalContent || primaryTextField.innerText);
     dataToSave[STORAGE_KEY_HEADLINE] = (headlineField.dataset.originalContent || headlineField.innerText);
     dataToSave[STORAGE_KEY_DESCRIPTION] = (descriptionField.dataset.originalContent || descriptionField.innerText);
     dataToSave[STORAGE_KEY_COPYWRITER] = copywriterSelect.value;
     dataToSave[STORAGE_KEY_ADDRESS_FORM] = formOfAddressSelect.value;
-    // STORAGE_KEY_LAST_RAW_RESPONSE is saved separately on generation/load from archive
     await chrome.storage.local.set(dataToSave);
   }
 
   async function loadMainViewSelections() {
     const result = await chrome.storage.local.get([
-      STORAGE_KEY_INPUT, STORAGE_KEY_PRIMARY, STORAGE_KEY_HEADLINE,
+      STORAGE_KEY_INPUT, STORAGE_KEY_TARGET_AUDIENCE, STORAGE_KEY_PRIMARY, STORAGE_KEY_HEADLINE,
       STORAGE_KEY_DESCRIPTION, STORAGE_KEY_COPYWRITER, STORAGE_KEY_ADDRESS_FORM,
-      STORAGE_KEY_LAST_RAW_RESPONSE // Load the last raw response
+      STORAGE_KEY_LAST_RAW_RESPONSE
     ]);
 
     if (result[STORAGE_KEY_INPUT]) inputContent.value = result[STORAGE_KEY_INPUT];
+    if (result[STORAGE_KEY_TARGET_AUDIENCE]) targetAudienceInput.value = result[STORAGE_KEY_TARGET_AUDIENCE]; // Corrected typo
     
     const willBeFilledMsg = chrome.i18n.getMessage('willBeFilledText');
     primaryTextField.innerText = result[STORAGE_KEY_PRIMARY] || willBeFilledMsg;
@@ -270,7 +285,6 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     if (result[STORAGE_KEY_LAST_RAW_RESPONSE]) {
       const adVersions = parseAdVersions(result[STORAGE_KEY_LAST_RAW_RESPONSE]);
       if (adVersions.length > 0) {
-        // Ensure V1 fields are consistent with the first version from raw response
         const v1 = adVersions[0];
         const notFoundMsg = chrome.i18n.getMessage('notFoundText');
         primaryTextField.innerText = v1.primaryText || notFoundMsg;
@@ -292,6 +306,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   }
   
   inputContent.addEventListener('input', saveMainViewSelections);
+  targetAudienceInput.addEventListener('input', saveMainViewSelections);
   copywriterSelect.addEventListener('change', saveMainViewSelections);
   formOfAddressSelect.addEventListener('change', saveMainViewSelections);
   primaryTextField.addEventListener('input', () => { primaryTextField.dataset.originalContent = primaryTextField.innerText; saveMainViewSelections(); });
@@ -334,7 +349,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   // --- Ad Parsing & Display Logic ---
   function parseAdVersions(text) {
     const versions = [];
-    if (!text || typeof text !== 'string') return versions; // Guard against null/undefined input
+    if (!text || typeof text !== 'string') return versions;
     const versionBlocks = text.split(/Version \d+:/i).slice(1); 
 
     versionBlocks.forEach((block) => {
@@ -432,6 +447,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   if (generateBtn) {
     generateBtn.addEventListener('click', async () => {
       const input = inputContent.value;
+      const targetAudience = targetAudienceInput.value;
       const selectedCopywriter = copywriterSelect.value;
       const selectedAddressForm = formOfAddressSelect.value;
 
@@ -457,7 +473,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       Object.values(tabContents).forEach(tc => tc.innerHTML = `<p>${generatingMsg}</p>`);
       multiVersionTabsContainer.style.display = 'block'; 
 
-      const systemPrompt = getSystemPrompt(selectedCopywriter, selectedAddressForm);
+      const systemPrompt = getSystemPrompt(selectedCopywriter, selectedAddressForm, targetAudience);
       const currentModel = await getSelectedModel();
 
       try {
@@ -486,7 +502,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
         const rawText = data.choices?.[0]?.message?.content;
 
         if (rawText) {
-          await chrome.storage.local.set({ [STORAGE_KEY_LAST_RAW_RESPONSE]: rawText }); // Save raw response
+          await chrome.storage.local.set({ [STORAGE_KEY_LAST_RAW_RESPONSE]: rawText });
           const adVersions = parseAdVersions(rawText);
           const notFoundMsg = chrome.i18n.getMessage('notFoundText');
           const couldNotParseMsg = chrome.i18n.getMessage('couldNotParseText');
@@ -511,7 +527,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
             Object.values(tabContents).forEach(tc => tc.innerHTML = `<p>${couldNotParseMsg} Raw response:</p><pre>${rawText}</pre>`);
           }
           
-          await saveMainViewSelections(); // Save V1 fields
+          await saveMainViewSelections();
           saveToHistory(rawText, currentModel); 
         } else {
           await chrome.storage.local.remove(STORAGE_KEY_LAST_RAW_RESPONSE);
@@ -537,6 +553,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   if (resetBtn) {
     resetBtn.addEventListener('click', async () => {
       inputContent.value = '';
+      targetAudienceInput.value = '';
       const willBeFilledMsg = chrome.i18n.getMessage('willBeFilledText');
       primaryTextField.innerText = willBeFilledMsg;
       headlineField.innerText = willBeFilledMsg;
@@ -553,9 +570,9 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       if (tabLinks.length > 0) switchTab(tabLinks[0]);
 
       await chrome.storage.local.remove([
-        STORAGE_KEY_INPUT, STORAGE_KEY_PRIMARY, STORAGE_KEY_HEADLINE,
+        STORAGE_KEY_INPUT, STORAGE_KEY_TARGET_AUDIENCE, STORAGE_KEY_PRIMARY, STORAGE_KEY_HEADLINE,
         STORAGE_KEY_DESCRIPTION, STORAGE_KEY_COPYWRITER, STORAGE_KEY_ADDRESS_FORM,
-        STORAGE_KEY_LAST_RAW_RESPONSE // Also remove raw response on reset
+        STORAGE_KEY_LAST_RAW_RESPONSE
       ]);
     });
   }
@@ -566,6 +583,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       history.unshift({ 
         time: new Date().toISOString(), 
         input: inputContent.value,
+        targetAudience: targetAudienceInput.value,
         copywriter: copywriterSelect.value,
         addressForm: formOfAddressSelect.value,
         model: modelUsed,
@@ -580,6 +598,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
 
   async function handleSaveToArchive() {
     const currentInputContent = inputContent.value;
+    const currentTargetAudience = targetAudienceInput.value;
     const currentCopywriter = copywriterSelect.value;
     const currentFormOfAddress = formOfAddressSelect.value;
     const currentModel = await getSelectedModel();
@@ -608,7 +627,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       }
     }
 
-    if (!currentInputContent && !rawGeneratedTextToSave) {
+    if (!currentInputContent && !rawGeneratedTextToSave && !currentTargetAudience) { // Check target audience too
       alert(chrome.i18n.getMessage('nothingToSaveAlert'));
       return;
     }
@@ -617,6 +636,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
       inputContent: currentInputContent,
+      targetAudience: currentTargetAudience,
       copywriter: currentCopywriter,
       formOfAddress: currentFormOfAddress,
       rawGeneratedText: rawGeneratedTextToSave || "", 
@@ -650,8 +670,9 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
 
     const savedMsg = chrome.i18n.getMessage('archiveItemSaved');
     const inputMsg = chrome.i18n.getMessage('archiveItemInput');
-    const primaryV1Msg = chrome.i18n.getMessage('archiveItemPrimaryV1'); // Still okay for snippet
-    const loadMsg = chrome.i18n.getMessage('archiveLoadButtonText'); // Use new key
+    const targetAudienceMsg = chrome.i18n.getMessage('targetAudienceLabel'); // Re-use label for archive
+    const primaryV1Msg = chrome.i18n.getMessage('archiveItemPrimaryV1');
+    const loadMsg = chrome.i18n.getMessage('archiveLoadButtonText');
     const deleteMsg = chrome.i18n.getMessage('archiveDeleteButton');
 
     archives.forEach(entry => {
@@ -662,6 +683,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       detailsDiv.classList.add('archive-item-details');
       const displayDate = new Date(entry.timestamp).toLocaleString(currentLanguage); 
       const inputSnippet = entry.inputContent ? entry.inputContent.substring(0, 50) + (entry.inputContent.length > 50 ? '...' : '') : chrome.i18n.getMessage('naText');
+      const targetAudienceSnippet = entry.targetAudience ? entry.targetAudience.substring(0, 50) + (entry.targetAudience.length > 50 ? '...' : '') : chrome.i18n.getMessage('naText');
       
       let primarySnippet = chrome.i18n.getMessage('naText');
       if (entry.rawGeneratedText) {
@@ -674,6 +696,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       detailsDiv.innerHTML = `
         <strong>${savedMsg}:</strong> <span class="archive-data">${displayDate}</span><br>
         <strong>${inputMsg}:</strong> <span class="archive-data">${inputSnippet}</span><br>
+        <strong>${targetAudienceMsg}:</strong> <span class="archive-data">${targetAudienceSnippet}</span><br>
         <strong>${primaryV1Msg}:</strong> <span class="archive-data">${primarySnippet}</span>
       `;
 
@@ -708,6 +731,7 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
 
     if (entryToLoad) {
       inputContent.value = entryToLoad.inputContent || "";
+      targetAudienceInput.value = entryToLoad.targetAudience || "";
       copywriterSelect.value = entryToLoad.copywriter || 'Default';
       formOfAddressSelect.value = entryToLoad.formOfAddress || 'Du';
       
@@ -733,9 +757,9 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
           multiVersionTabsContainer.style.display = 'none';
           updateTabPlaceholders(true);
         }
-      } else { // Fallback for old archive items without rawGeneratedText
+      } else { 
         await chrome.storage.local.remove(STORAGE_KEY_LAST_RAW_RESPONSE);
-        primaryTextField.innerText = entryToLoad.primaryText || willBeFilledMsg; // Old structure
+        primaryTextField.innerText = entryToLoad.primaryText || willBeFilledMsg; 
         headlineField.innerText = entryToLoad.headline || willBeFilledMsg;     
         descriptionField.innerText = entryToLoad.description || willBeFilledMsg; 
         primaryTextField.dataset.originalContent = entryToLoad.primaryText || "";
@@ -748,10 +772,10 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
       if (tabLinks.length > 0 && multiVersionTabsContainer.style.display !== 'none') {
         switchTab(tabLinks[0]);
       } else if (tabLinks.length > 0) {
-        switchTab(tabLinks[0]); // Ensure a tab is active even if content is placeholder
+        switchTab(tabLinks[0]);
       }
 
-      await saveMainViewSelections(); // Save V1 fields and input to their respective keys
+      await saveMainViewSelections();
       showView('main');
       alert(chrome.i18n.getMessage('archiveLoadedAlert'));
     } else {
@@ -786,18 +810,14 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
     const nonCopyableTexts = [willBeFilled, generating, errorGenerating, notFound, couldNotParse, naText, ""];
 
     if (nonCopyableTexts.includes(text)) {
-      // No alert for non-copyable content, as per user request to remove copy confirmation.
-      // console.warn(chrome.i18n.getMessage('noValidContentToCopyAlert', [fieldName]));
       return;
     }
     navigator.clipboard.writeText(text)
       .then(() => {
-        // No alert for successful copy, as per user request.
         // console.log(chrome.i18n.getMessage('copiedToClipboardAlert', [fieldName]));
       })
       .catch(err => {
         console.error(`Error copying ${fieldName} to clipboard: `, err);
-        // Keep error alert for explicit failures.
         alert(chrome.i18n.getMessage('copyErrorAlert', [fieldName])); 
       });
   }
@@ -841,7 +861,6 @@ Der Input des Nutzers, auf dem die Anzeige basieren soll, folgt als nächste Nac
   if (tabLinks.length > 0 && multiVersionTabsContainer.style.display !== 'none') {
     switchTab(tabLinks[0]);
   } else if (tabLinks.length > 0) {
-     // Ensure a tab is active even if content is placeholder, to avoid visual glitch
     const activeTab = document.querySelector('.tab-navigation .tab-link.active');
     if (!activeTab) {
         switchTab(tabLinks[0]);

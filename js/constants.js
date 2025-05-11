@@ -1,0 +1,12 @@
+export const STORAGE_KEY_API_KEY = 'openai_key';
+export const STORAGE_KEY_MODEL = 'openai_model';
+export const STORAGE_KEY_INPUT = 'fbAdInputContent';
+export const STORAGE_KEY_TARGET_AUDIENCE = 'fbAdTargetAudience';
+export const STORAGE_KEY_PRIMARY = 'fbAdPrimaryText'; 
+export const STORAGE_KEY_HEADLINE = 'fbAdHeadline';   
+export const STORAGE_KEY_DESCRIPTION = 'fbAdDescription'; 
+export const STORAGE_KEY_COPYWRITER = 'fbAdCopywriterSelect';
+export const STORAGE_KEY_ADDRESS_FORM = 'fbAdAddressFormSelect';
+export const STORAGE_KEY_ARCHIVES = 'fbAdArchives';
+export const STORAGE_KEY_LAST_RAW_RESPONSE = 'fbAdLastRawResponse';
+export const HISTORY_STORAGE_KEY = 'history'; // Added for saveToHistory

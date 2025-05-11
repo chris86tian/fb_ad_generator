@@ -123,7 +123,7 @@
       margin-bottom: 6px;
       color: var(--text-dark);
     }
-    .form-group select, #optionsView select, #archiveView select {
+    .form-group select, #optionsView select, #archiveView select, .form-group input[type="text"] {
       width: 100%;
       padding: 8px;
       border: 1px solid var(--border-color);
@@ -136,7 +136,7 @@
     textarea#inputContent {
       width: 100%;
       box-sizing: border-box;
-      min-height: 120px; 
+      min-height: 100px; /* Adjusted height */
       flex-grow: 1;
       padding: 8px;
       border: 1px solid var(--border-color);
@@ -460,6 +460,10 @@
               <option value="Sie" data-i18n-key="formOfAddressSie">Sie (formal)</option>
             </select>
           </div>
+          <div class="form-group">
+            <label for="targetAudienceInput" data-i18n-key="targetAudienceLabel">Zielgruppe:</label>
+            <input type="text" id="targetAudienceInput" data-i18n-placeholder-key="targetAudiencePlaceholder" placeholder="Beschreiben Sie Ihre Zielgruppe (optional)...">
+          </div>
           <textarea id="inputContent" data-i18n-placeholder-key="inputContentPlaceholder" placeholder="Paste your landing page content, offer, or job description here..."></textarea>
           <div class="button-group">
             <button id="saveToArchiveBtn" class="btn-secondary">
@@ -551,6 +555,12 @@
           <label for="apiKeyInput" data-i18n-key="apiKeyLabel">OpenAI API Key</label>
           <input type="password" id="apiKeyInput" data-i18n-placeholder-key="apiKeyPlaceholder" placeholder="Enter your API key...">
         </div>
+        <div class="form-group" style="margin-bottom: 5px;"> <!-- Reduced margin for the link -->
+          <p style="font-size: 12px; text-align: center; margin-top: -10px; margin-bottom: 15px;">
+            <span data-i18n-key="apiKeyInfoText">You can get your OpenAI API key</span>
+            <a href="https://platform.openai.com/api-keys" target="_blank" style="color: var(--primary-blue); text-decoration: underline;" data-i18n-key="apiKeyLinkText">here</a>.
+          </p>
+        </div>
         <div class="form-group">
           <label for="modelSelect" data-i18n-key="modelLabel">ChatGPT Model:</label>
           <select id="modelSelect">
@@ -581,6 +591,7 @@
         <ul>
           <li data-i18n-html-key="howToUseStepInput"><strong>Input Content:</strong> Paste your product description, landing page text, or offer details into the "Input Content" area.</li>
           <li data-i18n-html-key="howToUseStepStyle"><strong>Copywriter Style & Ansprache:</strong> Select a famous copywriter's style (or default) and choose the form of address (Du/Sie).</li>
+          <li data-i18n-html-key="howToUseStepTargetAudience"><strong>Zielgruppe (Optional):</strong> Beschreiben Sie Ihre Zielgruppe, um den Text noch besser anzupassen.</li>
           <li data-i18n-html-key="howToUseStepGenerate"><strong>Generate:</strong> Click "Generate Ad Copy" to create Primary Text, Headline, and Description. The tool will attempt to generate 3 versions. All generated versions will be shown in tabs.</li>
           <li data-i18n-html-key="howToUseStepReviewV1"><strong>Review & Copy (Version 1):</strong> The first generated version is shown in the main "Ad Preview" boxes. These fields are editable. Click the copy icon next to each field (Primary Text, Headline, Description) to copy that part of Version 1 to your clipboard.</li>
           <li data-i18n-html-key="howToUseStepReviewTabs"><strong>Review & Copy (All Versions - Tabs):</strong> Below the Version 1 preview, a tabbed section will appear.
